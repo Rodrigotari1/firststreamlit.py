@@ -3,8 +3,8 @@ from supabase import create_client, Client
 import uuid
 
 # Initialize Supabase client
-supabase: Client = create_client('https://saolyadhqyoolkoqjkoy.supabase.co', 
-                                 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhb2x5YWRocXlvb2xrb3Fqa295Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjEwNjc2MjEsImV4cCI6MjAzNjY0MzYyMX0.LufpTqEsE3top89h1xOss6ESYLUQd9ADM-hBpqEavqU')
+supabase: Client = create_client('https://.supabase.co', 
+                                 'key')
 
 # Dummy user credentials for testing
 dummy_user = {
