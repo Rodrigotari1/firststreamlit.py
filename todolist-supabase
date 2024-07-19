@@ -1,9 +1,16 @@
 import streamlit as st
 from supabase import create_client, Client
+import uuid
 
 # Initialize Supabase client
 supabase: Client = create_client('https://saolyadhqyoolkoqjkoy.supabase.co', 
                                  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhb2x5YWRocXlvb2xrb3Fqa295Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjEwNjc2MjEsImV4cCI6MjAzNjY0MzYyMX0.LufpTqEsE3top89h1xOss6ESYLUQd9ADM-hBpqEavqU')
+
+# Dummy user credentials for testing
+dummy_user = {
+    'email': 'testuser@example.com',
+    'password': 'testpassword'
+}
 
 def auth_interface():
     with st.sidebar:
@@ -14,33 +21,38 @@ def auth_interface():
         reg_email = st.text_input("Email", key="reg_email")
         reg_password = st.text_input("Password", type="password", key="reg_password")
         if st.button("Register"):
-            try:
-                user, error = supabase.auth.sign_up({'email': reg_email, 'password': reg_password})
-                if error:
-                    if "rate limit" in error.message.lower():
-                        st.error("Too many registration attempts. Please try again later.")
-                    else:
-                        st.error(f"Registration failed: {error.message}")
-                else:
-                    st.success("Registered successfully! Please login.")
-            except Exception as e:
-                st.error(f"An unexpected error occurred: {str(e)}")
+            response = supabase.auth.sign_up({
+                'email': reg_email,
+                'password': reg_password
+            })
+            st.write("Register response:", response)
+            if 'error' in response:
+                st.error(f"Registration failed: {response['error']['message']}")
+            else:
+                st.success("Registered successfully! Please login.")
 
         # Login form
         st.subheader("Login")
         login_email = st.text_input("Email", key="login_email")
         login_password = st.text_input("Password", type="password", key="login_password")
         if st.button("Login"):
-            try:
-                user, error = supabase.auth.sign_in({'email': login_email, 'password': login_password})
-                if error:
-                    st.error(f"Login failed: {error.message}")
+            if login_email == dummy_user['email'] and login_password == dummy_user['password']:
+                st.session_state['user'] = {'email': login_email, 'id': str(uuid.uuid4())}
+                st.session_state['login_status'] = True
+                st.success(f"Welcome {login_email}!")
+            else:
+                response = supabase.auth.sign_in({
+                    'email': login_email,
+                    'password': login_password
+                })
+                st.write("Login response:", response)
+                if 'error' in response:
+                    st.error(f"Login failed: {response['error']['message']}")
                 else:
-                    st.session_state['user'] = user
+                    st.session_state['user'] = response['user']
                     st.session_state['login_status'] = True
-                    st.success(f"Welcome {user['email']}!")
-            except Exception as e:
-                st.error(f"An unexpected error occurred: {str(e)}")
+                    st.success(f"Welcome {response['user']['email']}!")
+            st.experimental_rerun()
 
 def add_task():
     task = st.text_input("Enter a new task", key="new_task")
@@ -49,15 +61,18 @@ def add_task():
             "user_id": st.session_state['user']['id'], 
             "task": task
         }).execute()
-        if response.error:
-            st.error(f"Failed to add task: {response.error.message}")
+        st.write("Add task response:", response)
+        if 'error' in response:
+            st.error(f"Failed to add task: {response['error']['message']}")
         else:
             st.success("Task added successfully!")
+            st.experimental_rerun()
 
 def view_tasks():
     response = supabase.table('tasks').select("*").eq("user_id", st.session_state['user']['id']).execute()
-    if response.error:
-        st.error(f"Failed to fetch tasks: {response.error.message}")
+    st.write("View tasks response:", response)
+    if 'error' in response:
+        st.error(f"Failed to fetch tasks: {response['error']['message']}")
     else:
         tasks = response.data
         for task in tasks:
@@ -68,7 +83,8 @@ def view_tasks():
 
 def delete_task(task_id):
     response = supabase.table('tasks').delete().eq('id', task_id).execute()
-    if response.error:
+    st.write("Delete task response:", response)
+    if 'error' in response:
         st.error("Failed to delete task!")
     else:
         st.success("Task deleted successfully!")
@@ -82,9 +98,13 @@ def main():
         add_task()
         view_tasks()
         if st.sidebar.button("Logout"):
-            supabase.auth.sign_out()
-            st.session_state.clear()
-            st.experimental_rerun()
+            try:
+                supabase.auth.sign_out()
+                st.session_state.clear()
+                st.experimental_rerun()
+            except Exception as e:
+                st.error(f"An unexpected error occurred: {str(e)}")
 
 if __name__ == "__main__":
     main()
+
